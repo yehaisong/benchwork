@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Benchwork: 3D shop planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">Benchwork <span>shop planner</span></div>
+    <label class="sr" for="tpl" style="position:absolute;left:-9999px">Project</label>
+    <select id="tpl" aria-label="Project"></select>
+    <div class="spacer"></div>
+    <div class="seg" role="group" aria-label="Units">
+      <button id="u-in" aria-pressed="true">Inches</button>
+      <button id="u-cm" aria-pressed="false">cm</button>
+    </div>
+  </header>
+  <div class="main">
+    <aside>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="design" aria-selected="true">Design</button>
+        <button role="tab" data-tab="fit" aria-selected="false">Fit to me</button>
+        <button role="tab" data-tab="cut" aria-selected="false">Cut list</button>
+        <button role="tab" data-tab="build" aria-selected="false">Build</button>
+        <button role="tab" data-tab="mat" aria-selected="false">Materials</button>
+      </div>
+      <div class="pane" id="pane-design"></div>
+      <div class="pane" id="pane-fit" hidden></div>
+      <div class="pane" id="pane-cut" hidden></div>
+      <div class="pane" id="pane-build" hidden></div>
+      <div class="pane" id="pane-mat" hidden></div>
+    </aside>
+    <div class="viewport" id="vp">
+      <canvas id="gl"></canvas>
+      <div id="labels"></div>
+      <div class="hud tl"><div class="card" id="selcard" hidden></div></div>
+      <div class="help">Drag to orbit, right-drag or Shift-drag to pan, scroll to zoom, click a part to inspect</div>
+      <div class="hud bl">
+        <div class="chipgroup" role="group" aria-label="Camera views">
+          <button data-view="iso">3D</button><button data-view="front">Front</button>
+          <button data-view="side">Side</button><button data-view="top">Top</button><button data-view="fit">Zoom to fit</button>
+        </div>
+        <button class="chip" id="t-ctx" aria-pressed="true">Table and stool</button>
+        <button class="chip" id="t-dim" aria-pressed="true">Dimensions</button>
+        <label class="explode">Explode <input type="range" id="explode" min="0" max="1" step="0.01" value="0"></label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
