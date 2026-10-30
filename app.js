@@ -205,7 +205,8 @@ const TEMPLATES={
    {k:'width',label:'Width',v:66,min:30,max:90,step:.5},
    {k:'perhook',label:'Hooks per person',type:'select',v:'2',opts:[['1','1 double hook'],['2','2 hooks']]},
    {k:'depth',label:'Bench depth',v:16,min:12,max:20,step:.25},
-   {k:'seat',label:'Bench height',v:18,min:15,max:21,step:.25},
+   {k:'seat',label:'Bench height',v:18,min:15,max:26,step:.25},
+   {k:'levels',label:'Shoe shelf levels',type:'select',v:'1',opts:[['1','1 level'],['2','2 levels'],['3','3 levels']]},
    {k:'hook',label:'Hook board height',v:60,min:48,max:70,step:.5},
    {k:'kids',label:'Lower hooks for kids',type:'select',v:'no',opts:[['no','No'],['yes','Yes, at 44"']]},
    {k:'shelf',label:'Shelf height',v:72,min:60,max:84,step:.5},
@@ -227,6 +228,17 @@ const TEMPLATES={
    const shoeL=mid?(longL-a)/2:longL;
    (mid?[-1,1]:[0]).forEach(s=>parts.push({id:'shoe'+s,name:'Shoe shelf',type:'box',size:[shoeL,t,Db],pos:[s*(a/2+shoeL/2),shoeTop-t/2,0],
      cut:{L:shoeL,W:Db,note:'Sits on the lower long rails'+(mid?', one each side of the middle legs':'')}}));
+   // Extra shoe levels rest on 2x3 cleats at their ends (inside the end legs, and beside the middle legs), so nothing blocks the front.
+   // Levels are spaced evenly between the bottom shoe shelf and the rails under the seat.
+   const nlev=+p.levels||1,clear=(lh-b-shoeTop-(nlev-1)*t)/nlev,need=shoeTop+nlev*5+(nlev-1)*t+t+b;
+   for(let i=1;i<nlev;i++){const y=shoeTop+i*(clear+t);
+     (mid?[-1,1]:[0]).forEach(s=>parts.push({id:'shoeL'+i+'_'+s,name:'Shoe shelf, level '+(i+1),type:'box',size:[shoeL,t,Db],pos:[s*(a/2+shoeL/2),y-t/2,0],
+       cut:{L:shoeL,W:Db,note:'Rests on cleats at each end'}}));
+     const cx=mid?[-(W/2-a-a/2),-a,a,W/2-a-a/2]:[-(W/2-a-a/2),W/2-a-a/2];
+     cx.forEach((x,k)=>{const midSide=mid&&(k===1||k===2),len=midSide?Db-2*a:Db;
+       parts.push({id:'scl'+i+'_'+k,name:'Shoe shelf cleat',type:'box',size:[a,b,len],pos:[x,y-t-b/2,0],cut:lumber(len,midSide?'Beside a middle leg, between the long rails':'Inside an end, screwed to the inside faces of the front and back legs')});});}
+   if(clear<4.5)warns.push('Each shoe level is only '+fmt(clear)+' tall: fine for slippers and flats, too low for sneakers. For about 5" per level, raise the bench to '+fmt(need)+' or use fewer levels.');
+   if(S>20)warns.push('At '+fmt(S)+' the bench is higher than a dining chair seat (about 18"). Good for perching; shorter people may find it high for putting on shoes.');
    const board=(id,name,y,count,note)=>{parts.push({id,name,type:'box',size:[W,b,a],pos:[0,y,zw+a/2],cut:lumber(W,note)});
      for(let k=0;k<count;k++)parts.push({id:'hk'+id+k,name:'Coat hook',type:'box',size:[.75,3,2],pos:[-W/2+(k+.5)*W/count,y,zw+a+1],cut:hw('Screwed to a hook board')});};
    const nh=(+p.perhook||2)*N;board('hb','Hook board',p.hook,nh,'Screw into every wall stud it crosses');
@@ -243,20 +255,20 @@ const TEMPLATES={
    let door=null;
    if(p.copies==='door'){const off=W/2+p.door/2,twin=parts.map(pt=>({...pt,id:pt.id+'_b',pos:[pt.pos[0]+off,pt.pos[1],pt.pos[2]]}));
      parts.forEach(pt=>pt.pos=[pt.pos[0]-off,pt.pos[1],pt.pos[2]]);parts.push(...twin);door={w:p.door};}
-   return {parts,warns,t,door,copies:p.copies==='2'?2:1,summary:(p.copies==='door'?'Two units with a '+fmt(p.door)+' door space between them, '+fmt(2*W+p.door)+' overall. Check that the door opens fully past the benches. Each: ':p.copies==='2'?'A pair, one for each wall. Each: ':'')+fmt(W)+' bench at '+fmt(S)+' with a shoe shelf below, '+nh+' hooks at '+fmt(p.hook)+(p.kids==='yes'?' plus '+N+' at 44"':'')+', and a shelf at '+fmt(sh)+'. The bench is freestanding; the hook boards and shelf screw into wall studs.'};
+   return {parts,warns,t,door,copies:p.copies==='2'?2:1,summary:(p.copies==='door'?'Two units with a '+fmt(p.door)+' door space between them, '+fmt(2*W+p.door)+' overall. Check that the door opens fully past the benches. Each: ':p.copies==='2'?'A pair, one for each wall. Each: ':'')+fmt(W)+' bench at '+fmt(S)+' with '+(nlev>1?nlev+' shoe levels ('+fmt(clear)+' clear each)':'a shoe shelf')+' below, '+nh+' hooks at '+fmt(p.hook)+(p.kids==='yes'?' plus '+N+' at 44"':'')+', and a shelf at '+fmt(sh)+'. The bench is freestanding; the hook boards and shelf screw into wall studs.'};
   },
   steps:p=>[
    'Cut the 2x3 legs, rails, hook board'+(p.kids==='yes'?'s':'')+' and shelf ledger square to the cut list. Cut the bench seat, shoe shelf and shelf from '+fmt(p.t)+' boards or plywood.',
    'Build the two bench ends: screw an upper and a lower side rail between a front and a back leg with 2 1/2" screws, upper rail flush with the leg tops.',
    'Join the ends with the long rails, front and back, flush with the outside.'+(p.width>40?' Screw the middle legs inside the long rails and add the cross rail between them so the seat can’t sag.':'')+' Check the diagonals for square.',
-   'Drop in the shoe shelf, then screw the seat down into the upper rails.',
+   (+p.levels>1?'Drop in the bottom shoe shelf. Screw the shoe shelf cleats inside the ends'+(p.width>40?' and beside the middle legs':'')+' for the upper levels, set those shelves on them, then screw the seat down into the upper rails.':'Drop in the shoe shelf, then screw the seat down into the upper rails.'),
    'Find the wall studs and draw a level line at '+fmt(p.hook)+'. Drive two 3" screws through the hook board into every stud.'+(p.kids==='yes'?' Do the same for the kids board at 44".':''),
    'Screw the shelf ledger into the studs with its top '+fmt(p.shelf-p.t)+' up, add the brackets, and screw the shelf down onto them.',
    'Screw on the coat hooks, '+(+p.perhook||2)*+p.people+' evenly spaced.',
    'Sand, paint or finish, and slide the bench under the hooks. A boot tray on the shoe shelf catches the wet.',
    ...(p.copies==='2'?['Build the second unit the same way for the other wall. The cut list and materials already cover both.']:
      p.copies==='door'?['Build the second unit the same way on the other side of the door, '+fmt(p.door)+' from the first. The cut list and materials already cover both.']:[])],
-  stages:p=>[{cut:['leg','ulong','uside','llong','lside','xr','top','shoe','hb','led','shelf']},{add:['leg','uside','lside']},{add:['ulong','llong','xr']},{add:['shoe','top']},{add:['hb']},{add:['led','br','shelf']},{add:['hk']},null,...(p.copies!=='1'?[null]:[])]},
+  stages:p=>[{cut:['leg','ulong','uside','llong','lside','xr','top','shoe','scl','hb','led','shelf']},{add:['leg','uside','lside']},{add:['ulong','llong','xr']},{add:['shoe','scl','top']},{add:['hb']},{add:['led','br','shelf']},{add:['hk']},null,...(p.copies!=='1'?[null]:[])]},
  worktable:{name:'Corner work table',context:'corner',fitKind:null,
   params:[
    {k:'length',label:'Length',v:84,min:72,max:96,step:.5},
