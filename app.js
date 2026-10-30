@@ -200,7 +200,9 @@ const TEMPLATES={
  mudbench:{name:'Mudroom bench, hooks and shelf',context:'wall',fitKind:null,
   params:[
    {k:'people',label:'People',type:'select',v:'3',opts:[['2','2 people'],['3','3 people'],['4','4 people']]},
-   {k:'width',label:'Width',v:66,min:36,max:90,step:.5},
+   {k:'copies',label:'How many to build',type:'select',v:'1',opts:[['1','One'],['2','A pair, one per wall']]},
+   {k:'width',label:'Width',v:66,min:30,max:90,step:.5},
+   {k:'perhook',label:'Hooks per person',type:'select',v:'2',opts:[['1','1 double hook'],['2','2 hooks']]},
    {k:'depth',label:'Bench depth',v:16,min:12,max:20,step:.25},
    {k:'seat',label:'Bench height',v:18,min:15,max:21,step:.25},
    {k:'hook',label:'Hook board height',v:60,min:48,max:70,step:.5},
@@ -226,7 +228,9 @@ const TEMPLATES={
      cut:{L:shoeL,W:Db,note:'Sits on the lower long rails'+(mid?', one each side of the middle legs':'')}}));
    const board=(id,name,y,count,note)=>{parts.push({id,name,type:'box',size:[W,b,a],pos:[0,y,zw+a/2],cut:lumber(W,note)});
      for(let k=0;k<count;k++)parts.push({id:'hk'+id+k,name:'Coat hook',type:'box',size:[.75,3,2],pos:[-W/2+(k+.5)*W/count,y,zw+a+1],cut:hw('Screwed to a hook board')});};
-   board('hb','Hook board',p.hook,2*N,'Screw into every wall stud it crosses');
+   const nh=(+p.perhook||2)*N;board('hb','Hook board',p.hook,nh,'Screw into every wall stud it crosses');
+   if(W/nh<8)warns.push('The hooks are only '+fmt(W/nh)+' apart, so coats will bunch up. Choose 1 double hook per person.');
+   if(W/N<18)warns.push('The bench gives each person '+fmt(W/N)+', so '+N+' people can’t all sit at once. That’s fine for one or two at a time.');
    if(p.kids==='yes')board('hbk','Kids hook board',44,N,'One hook per person. Screw into the wall studs');
    const sh=p.shelf,nb=W>48?3:2;
    parts.push({id:'led',name:'Shelf ledger',type:'box',size:[W,b,a],pos:[0,sh-t-b/2,zw+a/2],cut:lumber(W,'Under the shelf at the wall. Screw into every stud')});
@@ -234,7 +238,7 @@ const TEMPLATES={
    for(let k=0;k<nb;k++)parts.push({id:'br'+k,name:'Shelf bracket',type:'box',size:[.75,5,p.sdepth-2],pos:[-W/2+3+k*(W-6)/(nb-1),sh-t-2.5,zw+a+(p.sdepth-2-a)/2],cut:hw((p.sdepth-2)+'" or so, into a stud')});
    if(p.hook-S<30)warns.push('The hooks are close to the bench, so coats will hang onto the seat. Raise the hook board.');
    if(sh-t-b<p.hook+b/2+6)warns.push('The shelf is close to the hooks, so bulky coats will hit it. Raise the shelf or lower the hooks.');
-   return {parts,warns,t,summary:fmt(W)+' bench at '+fmt(S)+' with a shoe shelf below, '+(2*N)+' hooks at '+fmt(p.hook)+(p.kids==='yes'?' plus '+N+' at 44"':'')+', and a shelf at '+fmt(sh)+'. The bench is freestanding; the hook boards and shelf screw into wall studs.'};
+   return {parts,warns,t,copies:+p.copies||1,summary:(+p.copies>1?'A pair, one for each wall. Each: ':'')+fmt(W)+' bench at '+fmt(S)+' with a shoe shelf below, '+nh+' hooks at '+fmt(p.hook)+(p.kids==='yes'?' plus '+N+' at 44"':'')+', and a shelf at '+fmt(sh)+'. The bench is freestanding; the hook boards and shelf screw into wall studs.'};
   },
   steps:p=>[
    'Cut the 2x3 legs, rails, hook board'+(p.kids==='yes'?'s':'')+' and shelf ledger square to the cut list. Cut the bench seat, shoe shelf and shelf from '+fmt(p.t)+' boards or plywood.',
@@ -243,9 +247,10 @@ const TEMPLATES={
    'Drop in the shoe shelf, then screw the seat down into the upper rails.',
    'Find the wall studs and draw a level line at '+fmt(p.hook)+'. Drive two 3" screws through the hook board into every stud.'+(p.kids==='yes'?' Do the same for the kids board at 44".':''),
    'Screw the shelf ledger into the studs with its top '+fmt(p.shelf-p.t)+' up, add the brackets, and screw the shelf down onto them.',
-   'Screw on the coat hooks, '+2*+p.people+' evenly spaced.',
-   'Sand, paint or finish, and slide the bench under the hooks. A boot tray on the shoe shelf catches the wet.'],
-  stages:[{cut:['leg','ulong','uside','llong','lside','xr','top','shoe','hb','led','shelf']},{add:['leg','uside','lside']},{add:['ulong','llong','xr']},{add:['shoe','top']},{add:['hb']},{add:['led','br','shelf']},{add:['hk']},null]},
+   'Screw on the coat hooks, '+(+p.perhook||2)*+p.people+' evenly spaced.',
+   'Sand, paint or finish, and slide the bench under the hooks. A boot tray on the shoe shelf catches the wet.',
+   ...(+p.copies>1?['Build the second unit the same way for the other wall. The cut list and materials already cover both.']:[])],
+  stages:p=>[{cut:['leg','ulong','uside','llong','lside','xr','top','shoe','hb','led','shelf']},{add:['leg','uside','lside']},{add:['ulong','llong','xr']},{add:['shoe','top']},{add:['hb']},{add:['led','br','shelf']},{add:['hk']},null,...(+p.copies>1?[null]:[])]},
  worktable:{name:'Corner work table',context:'corner',fitKind:null,
   params:[
    {k:'length',label:'Length',v:84,min:72,max:96,step:.5},
@@ -668,6 +673,8 @@ function updateFit(){
 // Pieces longer than a stick are butt-joined: whole sticks plus the leftover length.
 function sticks(list){const free=[];let whole=0;list=list.flatMap(L=>{while(L>96){whole++;L-=96}return L>0?[L]:[]});
   list.sort((x,y)=>y-x).forEach(L=>{const i=free.findIndex(f=>f>=L);if(i<0)free.push(96-L-.125);else free[i]-=L+.125});return free.length+whole}
+// Every part of every unit: the model shows one, but a template can ask for copies (a pair, say).
+function allParts(){const n=lastBuild.copies||1;return [].concat(...Array(n).fill(lastBuild.parts))}
 // Plywood the way a store rips it: each part takes a strip of its short side across the 48" width, laid along the 96" length.
 function packSheets(list){const sheets=[];let over=0;
   list.map(([x,y])=>[Math.min(x,y),Math.max(x,y)]).sort((p,q)=>q[0]-p[0]||q[1]-p[1]).forEach(([w,l])=>{
@@ -679,14 +686,14 @@ function packSheets(list){const sheets=[];let over=0;
   return {n:sheets.length,over};}
 function renderCut(){
   const pane=document.getElementById('pane-cut'),t=lastBuild.t,stocks=[...new Set(lastBuild.parts.filter(pt=>pt.cut.stock).map(pt=>pt.cut.stock))];
-  pane.innerHTML='<h2>Cut list</h2><p class="hint">'+(stocks.length?'Boards from '+fmt(t)+' sheet stock, frame from '+stocks.map(k=>k+' ('+LUMBER[k]+' actual)').join(' and ')+' lumber.':'All parts from '+fmt(t)+' sheet stock.')+' Tap a row to find it in the model.</p>';
-  const groups=[];lastBuild.parts.forEach(pt=>{const key=pt.name+'|'+pt.cut.L.toFixed(3)+'|'+pt.cut.W.toFixed(3);
+  pane.innerHTML='<h2>Cut list</h2><p class="hint">'+(stocks.length?'Boards from '+fmt(t)+' sheet stock, frame from '+stocks.map(k=>k+' ('+LUMBER[k]+' actual)').join(' and ')+' lumber.':'All parts from '+fmt(t)+' sheet stock.')+((lastBuild.copies||1)>1?' Quantities cover all '+lastBuild.copies+' units; the model shows one.':'')+' Tap a row to find it in the model.</p>';
+  const groups=[];allParts().forEach(pt=>{const key=pt.name+'|'+pt.cut.L.toFixed(3)+'|'+pt.cut.W.toFixed(3);
     const g=groups.find(g=>g.key===key);if(g)g.qty++;else groups.push({key,qty:1,pt})});
   const size=c=>c.hw?'hardware':c.stock?fmt(c.L)+' '+c.stock:fmt(c.L)+' × '+fmt(c.W);
   let area=0,run={},pieces={};let rows='';groups.forEach(g=>{const c=g.pt.cut;if(c.stock){run[c.stock]=(run[c.stock]||0)+g.qty*c.L;for(let i=0;i<g.qty;i++)(pieces[c.stock]=pieces[c.stock]||[]).push(c.L)}else if(!c.hw)area+=g.qty*c.L*c.W;
     rows+='<tr data-part="'+g.pt.name+'"><td>'+g.pt.name+(c.note?'<small>'+c.note+'</small>':'')+'</td><td class="num">'+g.qty+'</td><td class="num">'+size(c)+'</td></tr>'});
   pane.insertAdjacentHTML('beforeend','<table><thead><tr><th>Part</th><th>Qty</th><th>Size</th></tr></thead><tbody>'+rows+'</tbody></table>');
-  const sq=area/144*1.15,pk=packSheets(lastBuild.parts.filter(pt=>!pt.cut.stock&&!pt.cut.hw).map(pt=>[pt.cut.L,pt.cut.W]));
+  const sq=area/144*1.15,pk=packSheets(allParts().filter(pt=>!pt.cut.stock&&!pt.cut.hw).map(pt=>[pt.cut.L,pt.cut.W]));
   let kv=!area?'':'<div class="kv"><span>Sheet material with 15% waste</span><b>'+(units==='cm'?(sq*0.0929).toFixed(2)+' m²':sq.toFixed(1)+' sq ft')+'</b></div>'+
     (pk.n>1?'<div class="kv"><span>4×8 sheets to buy</span><b>'+pk.n+'</b></div>':'<div class="kv"><span>Share of a 4×8 sheet</span><b>'+Math.round(sq/32*100)+'%</b></div>');
   for(const k in run){const lf=run[k]*1.1/12;kv+='<div class="kv"><span>'+k+' with 10% waste</span><b>'+(units==='cm'?(lf*0.3048).toFixed(2)+' m':lf.toFixed(1)+' ft')+'</b></div><div class="kv"><span>8 ft '+k+'s to buy</span><b>'+sticks(pieces[k])+'</b></div>';}
@@ -710,7 +717,7 @@ function renderBuild(){const pane=document.getElementById('pane-build'),T=TEMPLA
 // Shopping list from the current build. Screw counts are rules of thumb: 4 per lumber piece, one every 8" of edge on sheet parts.
 const HW_PRICE={'Coat hook':4,'Shelf bracket':6,'Foam field tile':10};
 function materials(){
-  const parts=lastBuild.parts,t=lastBuild.t,items=[],add=(key,name,qty,price,note)=>qty&&items.push({key,name,qty,price:key in state.prices?state.prices[key]:price,note});
+  const parts=allParts(),t=lastBuild.t,items=[],add=(key,name,qty,price,note)=>qty&&items.push({key,name,qty,price:key in state.prices?state.prices[key]:price,note});
   const sheet=parts.filter(pt=>!pt.cut.stock&&!pt.cut.hw);
   if(sheet.length){const pk=packSheets(sheet.map(pt=>[pt.cut.L,pt.cut.W]));
     add('ply:'+t,'4×8 sheet of '+fmt(t)+' plywood',pk.n,Math.round(60*t/.75),pk.over?pk.over+' part(s) are bigger than a sheet: buy extra and join them':'Counted by fitting the parts into ripped strips');}
