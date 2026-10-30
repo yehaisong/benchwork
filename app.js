@@ -200,7 +200,8 @@ const TEMPLATES={
  mudbench:{name:'Mudroom bench, hooks and shelf',context:'wall',fitKind:null,
   params:[
    {k:'people',label:'People',type:'select',v:'3',opts:[['2','2 people'],['3','3 people'],['4','4 people']]},
-   {k:'copies',label:'How many to build',type:'select',v:'1',opts:[['1','One'],['2','A pair, one per wall']]},
+   {k:'copies',label:'How many to build',type:'select',v:'1',opts:[['1','One'],['2','A pair, one per wall'],['door','A pair on one wall, with a door between']]},
+   {k:'door',label:'Door space between (pair on one wall)',v:36,min:28,max:48,step:.5},
    {k:'width',label:'Width',v:66,min:30,max:90,step:.5},
    {k:'perhook',label:'Hooks per person',type:'select',v:'2',opts:[['1','1 double hook'],['2','2 hooks']]},
    {k:'depth',label:'Bench depth',v:16,min:12,max:20,step:.25},
@@ -238,7 +239,11 @@ const TEMPLATES={
    for(let k=0;k<nb;k++)parts.push({id:'br'+k,name:'Shelf bracket',type:'box',size:[.75,5,p.sdepth-2],pos:[-W/2+3+k*(W-6)/(nb-1),sh-t-2.5,zw+a+(p.sdepth-2-a)/2],cut:hw((p.sdepth-2)+'" or so, into a stud')});
    if(p.hook-S<30)warns.push('The hooks are close to the bench, so coats will hang onto the seat. Raise the hook board.');
    if(sh-t-b<p.hook+b/2+6)warns.push('The shelf is close to the hooks, so bulky coats will hit it. Raise the shelf or lower the hooks.');
-   return {parts,warns,t,copies:+p.copies||1,summary:(+p.copies>1?'A pair, one for each wall. Each: ':'')+fmt(W)+' bench at '+fmt(S)+' with a shoe shelf below, '+nh+' hooks at '+fmt(p.hook)+(p.kids==='yes'?' plus '+N+' at 44"':'')+', and a shelf at '+fmt(sh)+'. The bench is freestanding; the hook boards and shelf screw into wall studs.'};
+   // Pair on one wall: draw both units, one each side of the door opening.
+   let door=null;
+   if(p.copies==='door'){const off=W/2+p.door/2,twin=parts.map(pt=>({...pt,id:pt.id+'_b',pos:[pt.pos[0]+off,pt.pos[1],pt.pos[2]]}));
+     parts.forEach(pt=>pt.pos=[pt.pos[0]-off,pt.pos[1],pt.pos[2]]);parts.push(...twin);door={w:p.door};}
+   return {parts,warns,t,door,copies:p.copies==='2'?2:1,summary:(p.copies==='door'?'Two units with a '+fmt(p.door)+' door space between them, '+fmt(2*W+p.door)+' overall. Check that the door opens fully past the benches. Each: ':p.copies==='2'?'A pair, one for each wall. Each: ':'')+fmt(W)+' bench at '+fmt(S)+' with a shoe shelf below, '+nh+' hooks at '+fmt(p.hook)+(p.kids==='yes'?' plus '+N+' at 44"':'')+', and a shelf at '+fmt(sh)+'. The bench is freestanding; the hook boards and shelf screw into wall studs.'};
   },
   steps:p=>[
    'Cut the 2x3 legs, rails, hook board'+(p.kids==='yes'?'s':'')+' and shelf ledger square to the cut list. Cut the bench seat, shoe shelf and shelf from '+fmt(p.t)+' boards or plywood.',
@@ -249,8 +254,9 @@ const TEMPLATES={
    'Screw the shelf ledger into the studs with its top '+fmt(p.shelf-p.t)+' up, add the brackets, and screw the shelf down onto them.',
    'Screw on the coat hooks, '+(+p.perhook||2)*+p.people+' evenly spaced.',
    'Sand, paint or finish, and slide the bench under the hooks. A boot tray on the shoe shelf catches the wet.',
-   ...(+p.copies>1?['Build the second unit the same way for the other wall. The cut list and materials already cover both.']:[])],
-  stages:p=>[{cut:['leg','ulong','uside','llong','lside','xr','top','shoe','hb','led','shelf']},{add:['leg','uside','lside']},{add:['ulong','llong','xr']},{add:['shoe','top']},{add:['hb']},{add:['led','br','shelf']},{add:['hk']},null,...(+p.copies>1?[null]:[])]},
+   ...(p.copies==='2'?['Build the second unit the same way for the other wall. The cut list and materials already cover both.']:
+     p.copies==='door'?['Build the second unit the same way on the other side of the door, '+fmt(p.door)+' from the first. The cut list and materials already cover both.']:[])],
+  stages:p=>[{cut:['leg','ulong','uside','llong','lside','xr','top','shoe','hb','led','shelf']},{add:['leg','uside','lside']},{add:['ulong','llong','xr']},{add:['shoe','top']},{add:['hb']},{add:['led','br','shelf']},{add:['hk']},null,...(p.copies!=='1'?[null]:[])]},
  worktable:{name:'Corner work table',context:'corner',fitKind:null,
   params:[
    {k:'length',label:'Length',v:84,min:72,max:96,step:.5},
@@ -500,7 +506,12 @@ function buildContext(){
   const {seat}=fitCalc(),th=state.fit.table;
   const add=(geo,x,y,z)=>{const m=new THREE.Mesh(geo,ctxMat);m.position.set(x,y,z);m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),ctxEdge));ctxGroup.add(m)};
   if(T.context==='none')return;
-  if(T.context==='wall'){add(new THREE.BoxGeometry(120,96,.5),0,48,assemblyBox.min.z-.25);return}
+  if(T.context==='wall'){const b=assemblyBox,ww=Math.max(120,b.max.x-b.min.x+24),z=b.min.z-.25;add(new THREE.BoxGeometry(ww,96,.5),(b.min.x+b.max.x)/2,48,z);
+    // A door between a pair: casing and a slab, drawn just proud of the wall.
+    const d=lastBuild.door;if(d){const w=d.w-2,x0=(b.min.x+b.max.x)/2;
+      [-1,1].forEach(s=>add(new THREE.BoxGeometry(2.5,82,1),x0+s*(w/2-1.25),41,z+.75));add(new THREE.BoxGeometry(w,2.5,1),x0,82.75,z+.75);
+      add(new THREE.BoxGeometry(w-5,80,.75),x0,40,z+.6);}
+    return}
   if(T.context==='corner'){const b=assemblyBox,z0=b.min.z,x0=b.min.x;
     add(new THREE.BoxGeometry(b.max.x-x0+30,96,.5),x0+(b.max.x-x0+30)/2,48,z0-.25);add(new THREE.BoxGeometry(.5,96,60),x0-.25,48,z0+30);return}
   add(new THREE.BoxGeometry(48,1.25,24),0,th-.625,-10);
